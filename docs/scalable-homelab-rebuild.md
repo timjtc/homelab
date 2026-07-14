@@ -4,7 +4,7 @@ aliases:
 tags:
   - project/scalable-homelab-rebuild
 created: 2026-07-11T17:30
-up: "[[personal|Personal projects]]"
+up: "[[personal.kanban|Personal projects]]"
 ---
 # Problem
 
@@ -123,13 +123,12 @@ The content types for each storage resource was configured as follows:
 - zfs2h (ZFS pool, HDD)
 	- `image`, `containers`
 
-![scalable-homelab-rebuild-1783987280982.webp](blob/scalable-homelab-rebuild-1783987280982.webp)
+Figure: Proxmox storage configuration in Web GUI
+![scalable-homelab-rebuild-1783987280982.webp](blob/scalable-homelab-rebuild-1783987280982.webp) ^cc3137
 
 Other post-installation tasks were also performed:
 - Non-root PVE realm user created for personal access to PVE Web GUI, enforcing principle of least privilege when it comes to permissions.
 - 2FA for PVE Web GUI logins is also added to root and non-root user(s).
-- Harden Proxmox VE host machine.
-	- 2FA for TTY and SSH sessions are enabled via `libpam-google-authenticator` (refer to [[#Setting up Two-factor Authentication for all PAM session logins]])
 
 ## Hardening PVE host machine
 
@@ -205,19 +204,68 @@ net.ipv6.conf.all.forwarding = 1
 - `accept_redirects = 0` ignores ICMP redirect messages. This prevents from MITM and traffic hijacking attacks. `send_redirects = 0` also disables the PVE host itself from sending ICMP redirects.
 - `tcp_syncookies = 1` enables SYN cookies, which protects from TCP SYN flood attacks.
 - `net.ipv4.ip_forward = 1` and `net.ipv6.conf.all.forwarding = 1` is enabled for routing through VPN (plan to install Tailscale).
-- Each IPv4 config has `all` and `default` lines, so **all current** and **future** interfaces are affected. For the sole IPv6 forwarding setting, it does not need that since it is a global flag (refer to [[#^e49dca]], [[#^9453a5]]).
+- Each IPv4 config has `all` and `default` lines, so **all current** and **future** interfaces are affected. For the sole IPv6 forwarding setting, it does not need that since it is a global flag (refer to [[#^92a919]], [[#^7a4643]]).
 
 Once all settings are confirmed, `sudo sysctl --system` is executed to apply these settings.
 
 ### Defense-in-depth against brute-forcing
 
-Even with 2FA enabled, `fail2ban`
+Even with 2FA enabled, `fail2ban` will be installed as another layer against brute-forcing:
+```bash
+apt install fail2ban
+```
+
+The following is written in `/etc/fail2ban/jail.d/1-proxmox.conf`:
+```
+[proxmox]
+enabled = true
+port = https,http,8006
+filter = proxmox
+backend = systemd
+maxretry = 3
+findtime = 5m
+bantime = 1h
+```
+
+To filter for failed authentication, `/etc/fail2ban/filter.d/proxmox.conf` is created with the following content:
+```
+[Definition]
+failregex = pvedaemon\[.*authentication failure; rhost=<HOST> user=.* msg=.*
+ignoreregex =
+journalmatch = _SYSTEMD_UNIT=pvedaemon.service
+```
+
+The fail2ban service is restarted to apply the changes:
+```bash
+systemctl restart fail2ban
+```
+
+Verify the fail2ban jail is active:
+```bash
+fail2ban-client status proxmox
+```
+
+### Tailscale network overhaul
+
+Before connecting the PVE host to Tailscale as planned, several quality-of-life and security changes are made to the Tailscale tailnet under personal account:
+- Expired and stale devices are removed.
+- The tag system were restructured.
+- Appropriate access controls are assigned to the restructured tags. 
+
+These steps will be documented in a separate document as they may be subject to change. Refer to [tailnet-overhaul](tailnet-overhaul.md).
+
+After all changes are confirmed in the Tailscale dashboard and the tailnet policy JSON file, the PVE host is then registered to the tailnet:
+```bash
+sudo tailscale up --advertise-tags=tag:server-pve,tag:server-rpr--allow
+# The server-pve tag indicates it is a PVE server, the server-rpr--allow tag allows it to communicate with public-facing reverse proxies.
+```
+
 
 # References
 
 - https://community-scripts.org/scripts/post-pve-install?id=post-pve-install
 - https://ubuntu.com/tutorials/configure-ssh-2fa
 - https://pve.proxmox.com/wiki/Installation#advanced_lvm_options
-- https://docs.kernel.org/networking/ip-sysctl.html ^e49dca
-- https://lkml.org/lkml/2025/7/1/1170 ^9453a5
-
+- https://docs.kernel.org/networking/ip-sysctl.html ^92a919
+- https://lkml.org/lkml/2025/7/1/1170 ^7a4643
+- https://pve.proxmox.com/wiki/Fail2ban
