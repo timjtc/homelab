@@ -39,7 +39,7 @@ resource "proxmox_virtual_environment_vm" "vsoc1" {
   }
 
   memory {
-    dedicated = 6144   # MB
+    dedicated = 9216   # MB
   }
 
   disk {

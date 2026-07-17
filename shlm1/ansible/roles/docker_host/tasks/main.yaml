@@ -1,0 +1,49 @@
+- name: Set vm.max_map_count for OpenSearch
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: '262144'
+    state: present
+    reload: yes
+
+- name: Install dnf plugins core
+  ansible.builtin.dnf:
+    name: dnf-plugins-core
+    state: present
+
+- name: Add Docker CE repo
+  ansible.builtin.command:
+    cmd: dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
+    creates: /etc/yum.repos.d/docker-ce.repo
+
+- name: Install Docker
+  ansible.builtin.dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+
+- name: Enable and start Docker
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Add wzadmin to docker group
+  ansible.builtin.user:
+    name: wzadmin
+    groups: docker
+    append: true
+
+- name: Install pip
+  ansible.builtin.dnf:
+    name: python3-pip
+    state: present
+
+- name: Install Docker SDK for Python
+  ansible.builtin.pip:
+    name:
+      - docker
+      - requests
+    state: present

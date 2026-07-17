@@ -1,0 +1,29 @@
+- name: Install git
+  ansible.builtin.dnf:
+    name: git
+    state: present
+
+- name: Clone wazuh-docker repo
+  ansible.builtin.git:
+    repo: "https://github.com/wazuh/wazuh-docker.git"
+    dest: "{{ wazuh_docker_repo_dest }}"
+    version: "{{ wazuh_docker_version }}"
+
+- name: Generate indexer certs
+  community.docker.docker_compose_v2:
+    project_src: "{{ wazuh_docker_repo_dest }}/single-node"
+    files:
+      - generate-indexer-certs.yml
+    state: present
+  # runs the one-shot cert generator container
+
+- name: Template environment file with vaulted credentials
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ wazuh_docker_repo_dest }}/single-node/.env"
+    mode: '0600'
+
+- name: Start Wazuh stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ wazuh_docker_repo_dest }}/single-node"
+    state: present

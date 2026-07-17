@@ -1,0 +1,6 @@
+- name: Prepare SOC core host
+  hosts: soc_core
+  become: true
+  roles:
+    - docker_host
+    - wazuh_docker
