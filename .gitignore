@@ -1,3 +1,7 @@
+# Terraform
 **/.secrets.auto.tfvars
 **/terraform.tfstate*
 **/.terraform/*
+
+# Ansible
+**/vault.yaml
