@@ -63,6 +63,9 @@ As such, the table below lists the tool decided upon for each layer:
 | IaC               | [Terraform](https://developer.hashicorp.com/terraform) (via bpg/proxmox or telmate/proxmox)          |
 | Hypervisor        | [Proxmox-VE](https://pve.proxmox.com/wiki/Main_Page)                                                 |
 
+Figure:
+-
+
 ## Hardware setup
 
 **Proxmox VE 9.2-1 (PVE)** is installed on the server machine with the following configuration:
@@ -124,6 +127,7 @@ The content types for each storage resource was configured as follows:
 	- `image`, `containers`
 
 Figure: Proxmox storage configuration in Web GUI
+
 ![scalable-homelab-rebuild-1783987280982.webp](blob/scalable-homelab-rebuild-1783987280982.webp) ^cc3137
 
 Other post-installation tasks were also performed:
@@ -299,6 +303,7 @@ wget https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-Gene
 ```
 
 Figure: Downloading directly from PVE Web GUI
+
 ![scalable-homelab-rebuild-1784072002060.webp](blob/scalable-homelab-rebuild-1784072002060.webp)
 
 Then the first VM is created:
@@ -372,6 +377,7 @@ pveum user token add timjtc@pam terraform-token --privsep=0
 ```
 
 Figure: Adding API tokens through PVE Web GUI
+
 ![scalable-homelab-rebuild-1784028120229.webp](blob/scalable-homelab-rebuild-1784028120229.webp)
 ![scalable-homelab-rebuild-1784028142714.webp](blob/scalable-homelab-rebuild-1784028142714.webp)
 
@@ -474,6 +480,7 @@ terraform apply
 ```
 
 Figure: `terraform apply` and the resulting VM visible in Proxmox Web GUI
+
 ![scalable-homelab-rebuild-1784030565004.webp](blob/scalable-homelab-rebuild-1784030565004.webp)
 ![scalable-homelab-rebuild-1784079563413.webp](blob/scalable-homelab-rebuild-1784079563413.webp)
 ![scalable-homelab-rebuild-1784082134150.webp](blob/scalable-homelab-rebuild-1784082134150.webp)
@@ -486,18 +493,26 @@ sudo systemctl start nginx
 ```
 
 Figure: Web server up and running in vtest1 (10.0.0.96)
+
 ![scalable-homelab-rebuild-1784107360255.webp](blob/scalable-homelab-rebuild-1784107360255.webp)
 
 Figure(s): A temporary DNS A record is created for testing and registered in Nginx Proxy Manager to point towards the local IP of the VM (which was advertised on the PVE host running Tailscale)
+
 ![scalable-homelab-rebuild-1784107264413.webp](blob/scalable-homelab-rebuild-1784107264413.webp)
 ![scalable-homelab-rebuild-1784107310977.webp](blob/scalable-homelab-rebuild-1784107310977.webp)
 
 Figure: Local VM running Nginx is successfully reached via test domain name
+
 ![scalable-homelab-rebuild-1784107385136.webp](blob/scalable-homelab-rebuild-1784107385136.webp)
 
-Note: A painful troubleshooting effort was made in figuring out why the PVE host does not route properly at first (refer to [[#Changes - 2026-07-15 17 16]]) 
+Note: A painful troubleshooting effort was made in figuring out why the PVE host does not route properly at first (refer to [[#Changes - 2026-07-15 17 16]]).
 
-# Changes - 2026-07-15 17:16
+# Review
+
+What can be improved:
+- [ ] Ansible playbooks for automating host configuration after hardware setup.
+
+# Change Log - 2026-07-15 17:16
 
 The public-facing VPS cannot ping the local VM at first, even with the Tailscale routes advertised at the PVE host. To solve this;
 
@@ -517,7 +532,7 @@ A grant rule is specified in the Tailscale policy file to specifically allow con
 
 Note: The grant rule shown above is temporary, the use of [IP Sets in Tailscale](https://tailscale.com/docs/features/tailnet-policy-file/ip-sets) should be much cleaner.
 
-# Changes - 2026-07-14 18:37
+# Change Log - 2026-07-14 18:37
 
 Problems are encountered when provisioning VMs on zfs2h via Terraform, citing a hardware failure when cloning the template from zfs2h to zfs1s. Due to this, zfs2h is recreated into an LVM block named lvm1h.
 
