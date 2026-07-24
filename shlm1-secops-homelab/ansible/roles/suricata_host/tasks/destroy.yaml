@@ -1,0 +1,94 @@
+# roles/suricata_host/tasks/destroy.yaml
+
+# --- Wazuh agent on the PVE host ---
+
+- name: Stop and disable Wazuh agent
+  ansible.builtin.systemd:
+    name: wazuh-agent
+    state: stopped
+    enabled: false
+
+- name: Remove pve-firewall.log localfile block from ossec.conf
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: "<!-- {mark} PVE FIREWALL LOCALFILE -->"
+    state: absent
+
+- name: Remove Suricata eve.json localfile block from ossec.conf
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: "<!-- {mark} SURICATA LOCALFILE -->"
+    state: absent
+
+- name: Uninstall Wazuh agent
+  ansible.builtin.apt:
+    name: wazuh-agent
+    state: absent
+    purge: true
+
+- name: Remove downloaded Wazuh agent package
+  ansible.builtin.file:
+    path: /tmp/wazuh-agent.deb
+    state: absent
+
+# --- Proxmox firewall logging ---
+
+- name: Confirm pvefw-logger left running
+  ansible.builtin.debug:
+    msg: >
+      pvefw-logger is a core Proxmox service, not something this role installed —
+      intentionally left running/enabled rather than stopped.
+
+- name: Disable datacenter-level firewall
+  ansible.builtin.command:
+    cmd: pvesh set /cluster/firewall/options --enable 0
+  changed_when: true
+  failed_when: false
+
+- name: Revert Proxmox firewall log level to default (nolog)
+  ansible.builtin.command:
+    cmd: >
+      pvesh set /nodes/{{ inventory_hostname }}/firewall/options
+      --log_level_in nolog --log_level_out nolog
+  changed_when: true
+  failed_when: false
+
+# --- Suricata: passive capture on vmbr0 ---
+
+- name: Stop and disable Suricata
+  ansible.builtin.systemd:
+    name: suricata
+    state: stopped
+    enabled: false
+
+- name: Turn off vmbr0 promiscuous mode now
+  ansible.builtin.command:
+    cmd: ip link set vmbr0 promisc off
+  changed_when: true
+
+- name: Remove vmbr0 promiscuous persistence line
+  ansible.builtin.lineinfile:
+    path: /etc/network/interfaces
+    line: '    post-up ip link set vmbr0 promisc on'
+    state: absent
+
+- name: Restart networking to apply interface change cleanly
+  ansible.builtin.systemd:
+    name: networking
+    state: restarted
+
+- name: Uninstall Suricata package
+  ansible.builtin.apt:
+    name: suricata
+    state: absent
+    purge: true
+
+- name: Remove Suricata config directory remnants
+  ansible.builtin.file:
+    path: /etc/suricata
+    state: absent
+
+- name: Remove Suricata log directory
+  ansible.builtin.file:
+    path: /var/log/suricata
+    state: absent

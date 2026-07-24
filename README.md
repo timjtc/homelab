@@ -6,6 +6,7 @@ This repository contains all related documentation, scripts, and configuration f
 
 - [Scalable Homelab Rebuild](/docs/scalable-homelab-rebuild.md)
 - [Tailnet overhaul](/docs/tailnet-overhaul.md)
+- [SecOps Homelab](/docs/secops-homelab.md)
 
 ## Directory Structure
 

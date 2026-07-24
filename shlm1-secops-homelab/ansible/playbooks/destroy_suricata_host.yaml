@@ -1,0 +1,5 @@
+- name: Tear down Suricata/firewall-log integration on PVE host
+  hosts: pve_hosts
+  become: true
+  tasks:
+    - ansible.builtin.include_tasks: ../roles/suricata_host/tasks/destroy.yaml

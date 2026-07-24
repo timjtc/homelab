@@ -1,0 +1,3 @@
+suricata_monitor_iface: vmbr0
+wazuh_manager_ip: "10.0.0.23"
+pve_firewall_log_path: "/var/log/pve-firewall.log"

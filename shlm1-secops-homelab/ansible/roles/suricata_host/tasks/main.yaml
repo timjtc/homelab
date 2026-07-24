@@ -1,0 +1,102 @@
+# --- Suricata: passive capture on vmbr0 ---
+
+- name: Install Suricata
+  ansible.builtin.apt:
+    name: suricata
+    state: present
+    update_cache: true
+
+- name: Set monitor interface in Suricata config
+  ansible.builtin.lineinfile:
+    path: /etc/suricata/suricata.yaml
+    regexp: '^(\s+)- interface: .*'
+    line: '  - interface: {{ suricata_monitor_iface }}'
+    firstmatch: true
+
+- name: Persist vmbr0 promiscuous mode across reboots
+  ansible.builtin.lineinfile:
+    path: /etc/network/interfaces
+    insertafter: '^iface vmbr0'
+    line: '    post-up ip link set vmbr0 promisc on'
+
+- name: Bring vmbr0 promiscuous now
+  ansible.builtin.command:
+    cmd: ip link set vmbr0 promisc on
+  changed_when: true
+
+- name: Update Suricata rules
+  ansible.builtin.command:
+    cmd: suricata-update
+  changed_when: true
+
+- name: Enable and start Suricata
+  ansible.builtin.systemd:
+    name: suricata
+    enabled: true
+    state: started
+
+# --- Proxmox firewall logging ---
+
+- name: Enable Proxmox firewall log level (node-level, in+out)
+  ansible.builtin.command:
+    cmd: >
+      pvesh set /nodes/{{ inventory_hostname }}/firewall/options
+      --log_level_in info --log_level_out info
+  changed_when: true
+  failed_when: false
+  # failed_when: false because pvesh returns non-zero on "no change" in some PVE versions —
+  # treat as best-effort; verify manually in GUI (Node → Firewall → Options) if this doesn't
+  # take effect, since pvesh's firewall option path has shifted across PVE releases.
+
+- name: Ensure datacenter-level firewall is enabled
+  ansible.builtin.command:
+    cmd: pvesh set /cluster/firewall/options --enable 1
+  changed_when: true
+  failed_when: false
+
+- name: Confirm pvefw-logger service is running
+  ansible.builtin.systemd:
+    name: pvefw-logger
+    enabled: true
+    state: started
+
+# --- Wazuh agent on the PVE host ---
+
+- name: Download Wazuh agent (Debian package)
+  ansible.builtin.get_url:
+    url: "https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.14.6-1_amd64.deb"
+    dest: /tmp/wazuh-agent.deb
+
+- name: Install Wazuh agent
+  ansible.builtin.apt:
+    deb: /tmp/wazuh-agent.deb
+  environment:
+    WAZUH_MANAGER: "{{ wazuh_manager_ip }}"
+
+- name: Add Suricata eve.json as a localfile source
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    insertbefore: "</ossec_config>"
+    marker: "<!-- {mark} SURICATA LOCALFILE -->"
+    block: |
+      <localfile>
+        <log_format>json</log_format>
+        <location>/var/log/suricata/eve.json</location>
+      </localfile>
+
+- name: Add pve-firewall.log as a localfile source
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    insertbefore: "</ossec_config>"
+    marker: "<!-- {mark} PVE FIREWALL LOCALFILE -->"
+    block: |
+      <localfile>
+        <log_format>syslog</log_format>
+        <location>{{ pve_firewall_log_path }}</location>
+      </localfile>
+
+- name: Enable and start Wazuh agent
+  ansible.builtin.systemd:
+    name: wazuh-agent
+    enabled: true
+    state: started
