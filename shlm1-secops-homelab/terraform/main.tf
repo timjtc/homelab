@@ -49,7 +49,7 @@ resource "proxmox_virtual_environment_vm" "vsoc1" {
   }
 
   network_device {
-    bridge = "vmbr0"
+    bridge = "vmbr1"
   }
 
   initialization {
@@ -60,12 +60,43 @@ resource "proxmox_virtual_environment_vm" "vsoc1" {
     }
     ip_config {
       ipv4 {
-        address = "10.0.0.23/24"
-        gateway = "10.0.0.1"
+        address = "10.0.24.2/24"
+        gateway = "10.0.24.1"
       }
     }
     dns {
       servers = ["1.1.1.1", "8.8.8.8"]
     }
   }
+}
+
+resource "proxmox_virtual_environment_vm" "vsocr" {
+  name      = "vsocr"
+  node_name = "shlm1"
+
+  cpu {
+    type = "host"
+    cores = 2
+  }
+  memory {
+    dedicated = 3072
+  }
+
+  disk {
+    datastore_id = "lvm1h"
+    interface    = "scsi0"
+    size         = 20
+  }
+
+  # WAN — faces your existing home network
+  network_device {
+    bridge = "vmbr0"
+  }
+
+  # LAN — faces the isolated SOC segment
+  network_device {
+    bridge = "vmbr1"
+  }
+
+  boot_order = ["scsi0"]   # boot from CD first, for install
 }
