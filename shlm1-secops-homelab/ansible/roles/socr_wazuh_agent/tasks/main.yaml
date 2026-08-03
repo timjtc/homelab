@@ -1,0 +1,36 @@
+- name: Ensure pkg is bootstrapped
+  ansible.builtin.command: pkg bootstrap -y
+  changed_when: false
+  failed_when: false
+
+- name: Install Wazuh agent (FreeBSD package)
+  community.general.pkgng:
+    name: wazuh-agent
+    state: present
+
+- name: Configure Wazuh agent manager address
+  ansible.builtin.lineinfile:
+    path: /var/ossec/etc/ossec.conf
+    regexp: '<address>.*</address>'
+    line: '    <address>{{ wazuh_manager_ip }}</address>'
+
+- name: Add Suricata eve.json as localfile source
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    insertbefore: "</ossec_config>"
+    marker: "<!-- {mark} SURICATA LOCALFILE -->"
+    block: |
+      <localfile>
+        <log_format>json</log_format>
+        <location>{{ opnsense_eve_json_path }}</location>
+      </localfile>
+
+- name: Persist wazuh-agent enable in rc.conf
+  community.general.sysrc:
+    name: wazuh_agent_enable
+    value: "YES"
+
+- name: Start Wazuh agent
+  ansible.builtin.service:
+    name: wazuh-agent
+    state: started

@@ -1,0 +1,5 @@
+- name: Prepare SOC router host
+  hosts: soc_router
+  become: true
+  roles:
+    - socr_wazuh_agent

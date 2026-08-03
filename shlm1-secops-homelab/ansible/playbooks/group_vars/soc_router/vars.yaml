@@ -1,0 +1,2 @@
+wazuh_manager_ip: "10.0.24.2"
+opnsense_eve_json_path: "/var/log/suricata/eve.json"

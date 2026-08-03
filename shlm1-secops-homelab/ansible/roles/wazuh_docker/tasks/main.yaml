@@ -23,6 +23,19 @@
     dest: "{{ wazuh_docker_repo_dest }}/single-node/.env"
     mode: '0600'
 
+- name: Add syslog remote listener for OPNsense firewall logs
+  ansible.builtin.blockinfile:
+    path: "{{ wazuh_docker_repo_dest }}/single-node/config/wazuh_cluster/wazuh_manager.conf"
+    insertbefore: "</ossec_config>"
+    marker: "<!-- {mark} OPNSENSE SYSLOG REMOTE -->"
+    block: |
+      <remote>
+        <connection>syslog</connection>
+        <port>514</port>
+        <protocol>udp</protocol>
+        <allowed-ips>{{ opnsense_lan_ip }}</allowed-ips>
+      </remote>
+
 - name: Start Wazuh stack
   community.docker.docker_compose_v2:
     project_src: "{{ wazuh_docker_repo_dest }}/single-node"

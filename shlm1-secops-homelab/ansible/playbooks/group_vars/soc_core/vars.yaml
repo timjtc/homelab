@@ -1,2 +1,3 @@
 wazuh_docker_version: "v4.14.6"
 wazuh_docker_repo_dest: "/opt/wazuh-docker"
+opnsense_lan_ip: 10.0.24.1
