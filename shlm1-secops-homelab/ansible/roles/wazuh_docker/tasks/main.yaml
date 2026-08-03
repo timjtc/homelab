@@ -3,11 +3,22 @@
     name: git
     state: present
 
+- name: Check if wazuh-docker repo already exists
+  ansible.builtin.stat:
+    path: "{{ wazuh_docker_repo_dest }}/.git"
+  register: wazuh_repo_exists
+
 - name: Clone wazuh-docker repo
   ansible.builtin.git:
     repo: "https://github.com/wazuh/wazuh-docker.git"
     dest: "{{ wazuh_docker_repo_dest }}"
     version: "{{ wazuh_docker_version }}"
+  when: not wazuh_repo_exists.stat.exists
+
+- name: Check if indexer certs already exist
+  ansible.builtin.stat:
+    path: "{{ wazuh_docker_repo_dest }}/single-node/config/wazuh_indexer_ssl_certs/root-ca.pem"
+  register: certs_exist
 
 - name: Generate indexer certs
   community.docker.docker_compose_v2:
@@ -15,7 +26,7 @@
     files:
       - generate-indexer-certs.yml
     state: present
-  # runs the one-shot cert generator container
+  when: not certs_exist.stat.exists0
 
 - name: Template environment file with vaulted credentials
   ansible.builtin.template:
