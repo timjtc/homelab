@@ -4,3 +4,4 @@
   roles:
     - docker_host
     - wazuh_docker
+    - shuffle_docker

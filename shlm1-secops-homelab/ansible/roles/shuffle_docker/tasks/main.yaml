@@ -1,0 +1,33 @@
+
+- name: Clone Shuffle repo
+  ansible.builtin.git:
+    repo: "https://github.com/Shuffle/Shuffle.git"
+    dest: "{{ shuffle_repo_dest }}"
+    version: "{{ shuffle_version }}"
+
+- name: Create Shuffle database directory with correct ownership
+  ansible.builtin.file:
+    path: "{{ shuffle_repo_dest }}/shuffle-database"
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: '0770'
+
+- name: Create Shuffle apps directory
+  ansible.builtin.file:
+    path: "{{ shuffle_repo_dest }}/shuffle-apps"
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: '0770'
+
+- name: Template Shuffle .env file with vaulted values
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ shuffle_repo_dest }}/.env"
+    mode: '0600'
+
+- name: Start Shuffle stack via Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ shuffle_repo_dest }}"
+    state: present
